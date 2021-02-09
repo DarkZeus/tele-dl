@@ -14,7 +14,7 @@ parser.add_argument('--link', '-L', help='Enter the full link to the page. Examp
 parser.add_argument('--folder', '-F', help='Specify the folder where to extract images', type=pathlib.Path,
                     default=pathlib.Path().absolute())
 parser.add_argument('--explicit', '-E', help='Show all messages', choices=['yes', 'y', 'true', '1'], default=False)
-parser.add_argument('--mode', '-M', help='Choose mode to download. Consistent means ordered, fast means unordered.',
+parser.add_argument('--mode', '-M', help='Choose mode to download.',
                     choices=['ordered', 'fast'], default='fast')
 
 
