@@ -1,15 +1,14 @@
-import asyncio
 import argparse
+import asyncio
+import pathlib
+from datetime import datetime
+
 import aiofiles
 import aiohttp
-import ujson
-from datetime import datetime
-import pathlib
-import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--link', '-L', help='Enter the full link to the page. Example: '
-                                   '"https://telegra.ph/What-Was-TON-And-Why-It-Is-Over-05-12"', type=str,
+                                         '"https://telegra.ph/What-Was-TON-And-Why-It-Is-Over-05-12"', type=str,
                     required=True)
 parser.add_argument('--folder', '-F', help='Specify the folder where to extract images', type=pathlib.Path,
                     default=pathlib.Path().absolute())
@@ -45,7 +44,7 @@ async def main():
     async with aiohttp.ClientSession() as session:
         params = {'return_content': 'true'}
         async with session.get(
-                f"https://api.telegra.ph/getPage/{parser.parse_args().link.lstrip('https://telegra.ph/')}",
+                f"https://api.telegra.ph/getPage/{parser.parse_args().link.removeprefix('https://telegra.ph/')}",
                 params=params
         ) as response:
             response = await response.json()
@@ -56,25 +55,19 @@ async def main():
             while queue:
                 curr = queue.pop()
 
-                # print(curr)
-
-                if nexts := curr.get("children"):
+                if "children" in curr and (nexts := curr["children"]) and isinstance(nexts, list):
                     queue.extend(nexts)
 
-                if img := curr['tag'] == "img":
-                    imgs.append(img['attrs']['src'])
-                    print(img)
+                if type(curr) == dict and (img := curr["tag"] == "img"):
+                    imgs.append(curr['attrs']['src'])
 
-            print(imgs)
+            urls = [filename.split('/')[-1] for filename in imgs]
+            print(f"Images in telegraph page: {len(urls)}") if parser.parse_args().explicit else None
 
-
-            # urls = [filename.split('/')[-1] for filename in
-            #         [src['attrs']['src'] for src in response['result']['content'] if 'attrs' in src]]
-            # print(f"Images in telegraph page: {len(urls)}") if parser.parse_args().explicit else None
-            # if parser.parse_args().mode == 'fast':
-            #     await asyncio.gather(*[download_image(url, parser.parse_args().folder, image_id) for image_id, url in enumerate(urls)])
-            # else:
-            #     [await download_image(url, parser.parse_args().folder, image_id) for image_id, url in enumerate(urls)]
+            if parser.parse_args().mode == 'fast':
+                await asyncio.gather(*[download_image(url, parser.parse_args().folder, image_id) for image_id, url in enumerate(urls)])
+            else:
+                [await download_image(url, parser.parse_args().folder, image_id) for image_id, url in enumerate(urls)]
 
 
 if __name__ == '__main__':
