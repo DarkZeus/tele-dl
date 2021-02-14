@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import pathlib
 from datetime import datetime
+from utils import getsize, convert_bytes
 
 import aiofiles
 import aiohttp
@@ -12,45 +13,52 @@ parser.add_argument('--link', '-L', help='Enter the full link to the page. Examp
                     required=True)
 parser.add_argument('--folder', '-F', help='Specify the folder where to extract images', type=pathlib.Path,
                     default=pathlib.Path().absolute())
-parser.add_argument('--explicit', '-E', help='Show all messages', choices=['yes', 'y', 'true', '1'], default=False)
+parser.add_argument('--explicit', '-E', help='Show all messages', action="store_true")
 parser.add_argument('--mode', '-M', help='Choose mode to download.',
-                    choices=['ordered', 'fast'], default='fast')
+                    choices=['ordered', 'fast'], default='ordered')
 
 
-async def download_image(_url, folder, image_id=None):
+async def download_file(_url, folder, file_id=None):
     async with aiohttp.ClientSession() as session:
         async with session.get(f"https://telegra.ph/file/{_url}") as response:
-            assert response.status == 200
-            print(f"Downloading {_url}") if parser.parse_args().explicit else None
-            if not pathlib.Path(folder).exists():
-                try:
-                    pathlib.Path(folder).mkdir(parents=True, exist_ok=True)
-                except OSError:
-                    print(f"Creation of the directory {folder} failed") if parser.parse_args().explicit else None
-                else:
-                    print(f"Successfully created the directory {folder}") if parser.parse_args().explicit else None
+            if response.status == 200:
+                if not pathlib.Path(folder).exists():
+                    try:
+                        pathlib.Path(folder).mkdir(parents=True, exist_ok=True)
+                    except OSError:
+                        print(f"~> Creation of the directory {folder} failed") if parser.parse_args().explicit else None
+                    else:
+                        print(
+                            f"~> Successfully created the directory {folder}"
+                        ) if parser.parse_args().explicit else None
 
-            if parser.parse_args().mode == 'fast':
-                path = pathlib.Path().joinpath(folder, _url)
-            else:
-                path = pathlib.Path().joinpath(f"{folder}/{image_id}_{_url}")
-            async with aiofiles.open(path, 'wb') as f:
-                print(f"Writing {_url}") if parser.parse_args().explicit else None
-                await f.write(await response.read())
-                await f.flush()
+                path = {
+                    'fast': pathlib.Path().joinpath(folder, _url),
+                    'ordered': pathlib.Path().joinpath(f"{folder}/{file_id}_{_url}"),
+                }[parser.parse_args().mode]
+
+                async with aiofiles.open(path, 'wb') as file:
+                    await file.write(await response.read())
+                    print(f"~> {_url} — {getsize(path)['formatted']}") if parser.parse_args().explicit else None
+                    await file.flush()
 
 
 async def main():
     async with aiohttp.ClientSession() as session:
-        params = {'return_content': 'true'}
         async with session.get(
                 f"https://api.telegra.ph/getPage/{parser.parse_args().link.removeprefix('https://telegra.ph/')}",
-                params=params
+                params={'return_content': 'true'}
         ) as response:
             response = await response.json()
 
+            old_size = getsize(parser.parse_args().folder)['raw']
+            start_time = datetime.now()
+            print(f"~> Started at: {datetime.now()}",
+                  f"~> Saving: {response['result']['title']}",
+                  sep="\n")
+
             queue = response['result']['content']
-            imgs = []
+            files = []
 
             while queue:
                 curr = queue.pop()
@@ -58,21 +66,31 @@ async def main():
                 if "children" in curr and (nexts := curr["children"]) and isinstance(nexts, list):
                     queue.extend(nexts)
 
-                if type(curr) == dict and (img := curr["tag"] == "img"):
-                    imgs.append(curr['attrs']['src'])
+                if isinstance(curr, dict) and (curr["tag"] == "img" or curr["tag"] == "video"):
+                    files.append(curr['attrs']['src'])
 
-            urls = [filename.split('/')[-1] for filename in imgs]
-            print(f"Images in telegraph page: {len(urls)}") if parser.parse_args().explicit else None
+            urls = [filename.split('/')[-1] for filename in files[::-1]]
+            print(f"~> Files in telegraph page: {len(urls)}") if parser.parse_args().explicit else None
 
             if parser.parse_args().mode == 'fast':
-                await asyncio.gather(*[download_image(url, parser.parse_args().folder, image_id) for image_id, url in enumerate(urls)])
+                await asyncio.gather(*[download_file(
+                    url,
+                    parser.parse_args().folder,
+                    file_id
+                ) for file_id, url in enumerate(urls)])
             else:
-                [await download_image(url, parser.parse_args().folder, image_id) for image_id, url in enumerate(urls)]
+                [await download_file(
+                    url,
+                    parser.parse_args().folder,
+                    file_id
+                ) for file_id, url in enumerate(urls)]
+
+            size = convert_bytes(getsize(parser.parse_args().folder)['raw'] - old_size)
+            print(f"~> Saved {size} to {parser.parse_args().folder}",
+                  f"~> Time elapsed: {datetime.now() - start_time}",
+                  sep="\n")
 
 
 if __name__ == '__main__':
-    start_time = datetime.now()
-    print(f"Started at: {datetime.now()}")
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
-    print(f"Time elapsed: {datetime.now() - start_time}")
