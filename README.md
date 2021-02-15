@@ -17,7 +17,9 @@ optional arguments:
   --folder FOLDER, -F FOLDER
                         Specify the folder where to extract images
                         Default: current directory
+
   --explicit, -E        Enable logging
+
   --mode {ordered,fast}, -M {ordered,fast}
                         Choose mode to download.
                         Ordered — media will download in order of JSON schema from api.
