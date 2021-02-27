@@ -25,3 +25,6 @@ optional arguments:
                         Fast — media will download asynchronously orderless.
                         Default: ordered
 ```
+# TODO
+ - [ ] Implement import from CSV, JSON and other data formats
+ - [ ] Implement modularity for the ability to download not only from telegra.ph.
