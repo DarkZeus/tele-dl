@@ -9,21 +9,14 @@ main.py [-h] --link LINK [--folder FOLDER] [--explicit]
                [--mode {ordered,fast}]
 
 required arguments:
-  --link LINK, -L LINK  Enter the full link to the page. Example:
-                        "https://telegra.ph/What-Was-TON-And-Why-It-Is-
-                        Over-05-12"
+  --link, -L    Enter the full link to the page. Example:
+                "https://telegra.ph/What-Was-TON-And-Why-It-Is-Over-05-12"
 
 optional arguments:
   -h, --help            Show this help message and exit
-  --folder FOLDER, -F FOLDER
-                        Specify the folder where to extract images
+  --folder, -F          Specify the folder where to extract images
                         Default: current directory
   --explicit, -E        Enable logging
-  --mode {ordered,fast}, -M {ordered,fast}
-                        Choose mode to download.
-                        Ordered — media will download in order of JSON schema from api.
-                        Fast — media will download asynchronously orderless.
-                        Default: ordered
 ```
 # TODO
  - [ ] Implement import from CSV, JSON and other data formats
