@@ -1,40 +1,52 @@
 import asyncio
-import pathlib
-
-import ujson
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
-from utils import getsize, convert_bytes, arguments
+from pathlib import Path
+from sys import platform
 
 import aiofiles
 import aiohttp
+import ujson
+
+from parser import arguments
+from processing.image import compress_image
+from utils import getsize, convert_bytes, append_extension, log, is_image_by_url, create_directory
 
 
-async def download_file(_url, folder, file_id=None):
-    if not pathlib.Path(f"{folder}/{file_id}_{_url}").exists() or getsize(f"{folder}/{file_id}_{_url}")['raw'] == 0:
-        async with semaphore:
-            async with aiohttp.ClientSession(json_serialize=ujson.dumps,
-                                             headers={'Connection': 'keep-alive'}) as session:
-                async with session.get(f"https://telegra.ph/file/{_url}") as response:
-                    if response.status == 200:
-                        if not pathlib.Path(folder).exists():
-                            try:
-                                pathlib.Path(folder).mkdir(parents=True, exist_ok=True)
-                            except OSError:
-                                print(
-                                    f"~> Creation of the directory {folder} failed"
-                                ) if parser.parse_args().explicit else None
-                            else:
-                                print(
-                                    f"~> Successfully created the directory {folder}"
-                                ) if parser.parse_args().explicit else None
+async def write_file(_bytes: bytes, path: Path):
+    async with aiofiles.open(path, 'wb+') as file:
+        await file.write(_bytes)
+        await file.flush()
 
-                        path = pathlib.Path().joinpath(f"{folder}/{file_id}_{_url}")
-                        async with aiofiles.open(path, 'wb+') as file:
-                            await file.write(await response.read())
-                            print(
-                                f"~> {file_id}_{_url} — {getsize(path)['formatted']}"
-                            ) if parser.parse_args().explicit else None
-                            await file.flush()
+
+async def download_file(_url, folder, file_id=None) -> None:
+    create_directory(folder)
+    if not Path(f"{folder}/{file_id}_{_url}").exists() or getsize(Path(f"{folder}/{file_id}_{_url}"))['raw'] == 0:
+        async with semaphore, aiohttp.ClientSession(json_serialize=ujson.dumps,
+                                         headers={'Connection': 'keep-alive'}) as session:
+            async with session.get(f"https://telegra.ph/file/{_url}") as response:
+                assert response.status == 200
+
+                path = Path(f"{folder}/{file_id}_{_url}")
+                if parser.parse_args().compress:
+                    loop = asyncio.get_running_loop()
+                    executor = ProcessPoolExecutor()
+                    destination = append_extension(str(path), "webp")
+
+                    if not Path(destination).exists() or getsize(destination)['formatted'] == 0:
+                        if is_image_by_url(_url):
+                            await asyncio.gather(*[loop.run_in_executor(
+                                executor,
+                                compress_image,
+                                await response.read(),
+                                Path(destination)) if is_image_by_url(_url) else None])
+                        else:
+                            await write_file(await response.read(), path)
+                            log(f"[download] {file_id}_{_url} — {getsize(path)['formatted']}")
+
+                else:
+                    await write_file(await response.read(), path)
+                    log(f"[download] {file_id}_{_url} — {getsize(path)['formatted']}")
 
 
 async def main():
@@ -47,9 +59,10 @@ async def main():
 
             old_size = getsize(parser.parse_args().folder)['raw']
             start_time = datetime.now()
-            print(f"~> Started at: {datetime.now()}",
-                  f"~> Saving: {response['result']['title']}",
-                  sep="\n")
+            log([
+                f"[info] Started at: {datetime.now()}",
+                f"[download] {response['result']['title']}",
+            ])
 
             queue = response['result']['content']
             files = []
@@ -64,7 +77,7 @@ async def main():
                     files.append(curr['attrs']['src'])
 
             urls = [filename.split('/')[-1] for filename in files[::-1]]
-            print(f"~> Files in telegraph page: {len(urls)}") if parser.parse_args().explicit else None
+            log(f"[info] Files in telegraph page: {len(urls)}")
 
             await asyncio.gather(*[download_file(
                 url,
@@ -73,13 +86,14 @@ async def main():
             ) for file_id, url in enumerate(urls)])
 
             size = convert_bytes(getsize(parser.parse_args().folder)['raw'] - old_size)
-            print(f"~> Saved {size} to {parser.parse_args().folder}",
-                  f"~> Time elapsed: {datetime.now() - start_time}",
-                  sep="\n")
+            log([
+                f"[download] Saved {size} to \"{parser.parse_args().folder}\"",
+                f"[info] Time elapsed: {datetime.now() - start_time}"
+            ])
 
 
 if __name__ == '__main__':
     parser = arguments()
     semaphore = asyncio.Semaphore(50)
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy()) if platform == 'win32' else None
+    asyncio.run(main())
