@@ -13,26 +13,24 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # Build for multiple platforms
+        # Build for the most commonly used platforms
         include:
           - goos: linux
             goarch: amd64
             suffix: ""
-          - goos: linux
-            goarch: arm64
-            suffix: ""
+            name: "Linux x64"
           - goos: darwin
             goarch: amd64
             suffix: ""
+            name: "macOS Intel"
           - goos: darwin
             goarch: arm64
             suffix: ""
+            name: "macOS Apple Silicon"
           - goos: windows
             goarch: amd64
             suffix: ".exe"
-          - goos: windows
-            goarch: arm64
-            suffix: ".exe"
+            name: "Windows x64"
 
     steps:
       - name: Checkout code
@@ -126,16 +124,14 @@ jobs:
           Choose the appropriate binary for your platform:
           
           **Linux:**
-          - \`tele-dl-$VERSION-linux-amd64.tar.gz\` (Intel/AMD 64-bit)
-          - \`tele-dl-$VERSION-linux-arm64.tar.gz\` (ARM 64-bit)
+          - \`tele-dl-$VERSION-linux-amd64.tar.gz\` (x64)
           
           **macOS:**
           - \`tele-dl-$VERSION-darwin-amd64.tar.gz\` (Intel Macs)
-          - \`tele-dl-$VERSION-darwin-arm64.tar.gz\` (Apple Silicon)
+          - \`tele-dl-$VERSION-darwin-arm64.tar.gz\` (Apple Silicon/M-series)
           
           **Windows:**
-          - \`tele-dl-$VERSION-windows-amd64.zip\` (64-bit)
-          - \`tele-dl-$VERSION-windows-arm64.zip\` (ARM 64-bit)
+          - \`tele-dl-$VERSION-windows-amd64.zip\` (x64)
           
           ### 🛠️ Installation
           1. Download the appropriate archive for your platform
