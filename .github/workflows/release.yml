@@ -134,10 +134,23 @@ jobs:
           - \`tele-dl-$VERSION-windows-amd64.zip\` (x64)
           
           ### 🛠️ Installation
+          
+          **Linux/macOS:**
           1. Download the appropriate archive for your platform
-          2. Extract the binary
-          3. Make it executable (Linux/macOS): \`chmod +x tele-dl-*\`
+          2. Extract the binary: \`tar -xzf tele-dl-*.tar.gz\`
+          3. Make it executable: \`chmod +x tele-dl-*\`
           4. Run: \`./tele-dl-* --help\`
+          
+          **macOS Security Note:**
+          On first run, macOS may show "Apple cannot verify this is free of malware". This is normal for unsigned binaries. To bypass:
+          - **Option 1:** Right-click the binary → "Open" → "Open" when prompted
+          - **Option 2:** Run in Terminal: \`xattr -d com.apple.quarantine ./tele-dl-darwin-*\`
+          - **Option 3:** Go to System Preferences → Security & Privacy → Click "Allow Anyway"
+          
+          **Windows:**
+          1. Download the ZIP file
+          2. Extract the .exe file
+          3. Run: \`tele-dl-windows-amd64.exe --help\`
           
           ### 📝 Usage
           \`\`\`bash

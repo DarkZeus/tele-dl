@@ -12,6 +12,36 @@ A high-performance Go tool for downloading media from Telegraph (telegra.ph) pag
 
 ## Installation
 
+### Option 1: Download Pre-built Binaries (Recommended)
+
+1. Go to [Releases](https://github.com/yourusername/tele-dl/releases/latest)
+2. Download the appropriate binary for your platform:
+   - **Linux**: `tele-dl-v1.0.0-linux-amd64.tar.gz`
+   - **macOS Intel**: `tele-dl-v1.0.0-darwin-amd64.tar.gz`
+   - **macOS Apple Silicon**: `tele-dl-v1.0.0-darwin-arm64.tar.gz`
+   - **Windows**: `tele-dl-v1.0.0-windows-amd64.zip`
+
+3. Extract and run:
+   ```bash
+   # Linux/macOS
+   tar -xzf tele-dl-*.tar.gz
+   chmod +x tele-dl-*
+   ./tele-dl-* --help
+   
+   # Windows
+   # Extract the ZIP and run the .exe
+   ```
+
+### macOS Security Note
+
+On first run, macOS may show "Apple cannot verify this is free of malware". This is normal for unsigned binaries. To bypass:
+
+- **Option 1**: Right-click the binary → "Open" → "Open" when prompted
+- **Option 2**: Run in Terminal: `xattr -d com.apple.quarantine ./tele-dl-darwin-*`
+- **Option 3**: Go to System Preferences → Security & Privacy → Click "Allow Anyway"
+
+### Option 2: Build from Source
+
 ```bash
 # Clone the repository
 git clone <your-repository-url>
