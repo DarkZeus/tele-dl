@@ -1,3 +1,7 @@
 .idea
 venv
 __pycache__
+
+# Ignore .cursor folder but keep .cursor/rules/
+.cursor/
+!.cursor/rules/

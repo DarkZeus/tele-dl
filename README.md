@@ -1,25 +1,54 @@
-tele-dl — download media from telegra.ph
+# tele-dl
 
-# Description
-tele-dl is a command-line program which can help you download all media (both images and videos) from a telegra.ph webpage. It requires Python 3.10+ interpreter. It should work wherever you can install Python. 
+A high-performance Go tool for downloading media from Telegraph (telegra.ph) pages.
 
-# Usage
+## Features
+
+- **Blazing Fast**: Concurrent downloads with configurable worker pools
+- **Memory Efficient**: Streaming downloads without loading entire files into memory
+- **Progress Tracking**: Real-time download progress and statistics
+- **Retry Logic**: Automatic retry for failed downloads
+- **JSON Output**: Machine-readable output format option
+
+## Installation
+
+```bash
+# Clone the repository
+git clone <your-repository-url>
+cd tele-dl
+
+# Build the binary
+go build -o tele-dl main.go
 ```
-main.py [-h] --link LINK [--folder FOLDER] [--explicit] [--compress]
 
-options:
-  -h, --help            show this help message and exit
-  --link LINK, -L LINK  Enter the full link to the page. Example:
-                        "https://telegra.ph/What-Was-TON-And-Why-It-Is-
-                        Over-05-12"
-  --folder FOLDER, -F FOLDER
-                        Specify the folder where to extract images
-  --explicit, -E        Show all messages
-  --compress, -C        Compress all photos to WebP format, which is smaller
-                        than JPEG or PNG at equivalent quality
+## Usage
 
+```bash
+# Download all media from a Telegraph page
+./tele-dl -l "https://telegra.ph/example-page-12-34"
 
+# Use custom output directory and worker count
+./tele-dl -l "https://telegra.ph/example-page-12-34" -o downloads -w 100
+
+# Quiet mode with JSON output
+./tele-dl -l "https://telegra.ph/example-page-12-34" -q --json
+
+# Full options
+./tele-dl --help
 ```
-# TODO
- - [ ] Implement import from CSV, JSON and other data formats
- - [ ] Implement modularity for the ability to download not only from telegra.ph.
+
+## Options
+
+- `-l, --link`: Telegraph page URL (required)
+- `-o, --output`: Output directory (default: current directory)
+- `-w, --workers`: Number of concurrent downloads (default: 50)
+- `-t, --timeout`: HTTP request timeout (default: 30s)
+- `-p, --progress`: Show progress bar (default: true)
+- `-q, --quiet`: Quiet mode (minimal output)
+- `--retries`: Number of retry attempts (default: 3)
+- `--json`: Output results in JSON format
+
+## Requirements
+
+- Go 1.21 or later
+- Internet connection

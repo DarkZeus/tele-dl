@@ -1,0 +1,155 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on version tags like v1.0.0, v2.1.3, etc.
+
+permissions:
+  contents: write  # Required to create releases and upload assets
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Build for multiple platforms
+        include:
+          - goos: linux
+            goarch: amd64
+            suffix: ""
+          - goos: linux
+            goarch: arm64
+            suffix: ""
+          - goos: darwin
+            goarch: amd64
+            suffix: ""
+          - goos: darwin
+            goarch: arm64
+            suffix: ""
+          - goos: windows
+            goarch: amd64
+            suffix: ".exe"
+          - goos: windows
+            goarch: arm64
+            suffix: ".exe"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'  # Match your go.mod version
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          # Create output directory
+          mkdir -p dist
+          
+          # Build the binary
+          go build -ldflags="-s -w -X main.version=${{ steps.version.outputs.VERSION }} -X main.commit=${{ github.sha }}" \
+            -o dist/tele-dl-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} \
+            main.go
+
+      - name: Create archive
+        run: |
+          cd dist
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            zip tele-dl-${{ steps.version.outputs.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip \
+              tele-dl-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
+          else
+            tar -czf tele-dl-${{ steps.version.outputs.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz \
+              tele-dl-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: releases
+          path: dist/*.{tar.gz,zip}
+
+  create-release:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: releases
+          path: dist
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Extract version number for changelog lookup
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          
+          # Create release notes
+          cat > release_notes.md << EOF
+          ## 🚀 Release $VERSION
+          
+          ### What's New
+          - High-performance Telegraph media downloader
+          - Concurrent downloads with configurable worker pools
+          - Progress tracking and retry logic
+          - JSON output support
+          
+          ### 📦 Download
+          Choose the appropriate binary for your platform:
+          
+          **Linux:**
+          - \`tele-dl-$VERSION-linux-amd64.tar.gz\` (Intel/AMD 64-bit)
+          - \`tele-dl-$VERSION-linux-arm64.tar.gz\` (ARM 64-bit)
+          
+          **macOS:**
+          - \`tele-dl-$VERSION-darwin-amd64.tar.gz\` (Intel Macs)
+          - \`tele-dl-$VERSION-darwin-arm64.tar.gz\` (Apple Silicon)
+          
+          **Windows:**
+          - \`tele-dl-$VERSION-windows-amd64.zip\` (64-bit)
+          - \`tele-dl-$VERSION-windows-arm64.zip\` (ARM 64-bit)
+          
+          ### 🛠️ Installation
+          1. Download the appropriate archive for your platform
+          2. Extract the binary
+          3. Make it executable (Linux/macOS): \`chmod +x tele-dl-*\`
+          4. Run: \`./tele-dl-* --help\`
+          
+          ### 📝 Usage
+          \`\`\`bash
+          # Basic usage
+          ./tele-dl -l "https://telegra.ph/example-page-12-34"
+          
+          # With custom options
+          ./tele-dl -l "https://telegra.ph/example" -o downloads -w 100
+          \`\`\`
+          EOF
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          name: Release ${{ steps.version.outputs.VERSION }}
+          body_path: release_notes.md
+          files: dist/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
