@@ -67,16 +67,21 @@ jobs:
           if [ "${{ matrix.goos }}" = "windows" ]; then
             zip tele-dl-${{ steps.version.outputs.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip \
               tele-dl-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
+            echo "Created: tele-dl-${{ steps.version.outputs.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip"
           else
             tar -czf tele-dl-${{ steps.version.outputs.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz \
               tele-dl-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
+            echo "Created: tele-dl-${{ steps.version.outputs.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz"
           fi
+          ls -la
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: releases
-          path: dist/*.{tar.gz,zip}
+          name: release-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
 
   create-release:
     needs: release
@@ -88,8 +93,14 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: releases
           path: dist
+          merge-multiple: true
+
+      - name: List downloaded files
+        run: |
+          echo "Contents of dist directory:"
+          find dist -type f -name "*.tar.gz" -o -name "*.zip" | sort
+          ls -la dist/
 
       - name: Get version from tag
         id: version
@@ -148,7 +159,9 @@ jobs:
           tag_name: ${{ steps.version.outputs.VERSION }}
           name: Release ${{ steps.version.outputs.VERSION }}
           body_path: release_notes.md
-          files: dist/*
+          files: |
+            dist/**/*.tar.gz
+            dist/**/*.zip
           draft: false
           prerelease: false
         env:
